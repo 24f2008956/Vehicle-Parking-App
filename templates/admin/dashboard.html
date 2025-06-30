@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - ParkSmart{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-5 fw-bold"><i class="fas fa-tachometer-alt me-2 text-primary"></i>Admin Dashboard</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('view_users') }}" class="btn btn-info btn-lg shadow-sm"><i class="fas fa-users me-2"></i>View Users</a>
+        <a href="{{ url_for('create_parking_lot') }}" class="btn btn-success btn-lg shadow-sm"><i class="fas fa-plus-circle me-2"></i>Create New Lot</a>
+        <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-lg"><i class="fas fa-home me-2"></i>Home</a>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="row mb-4">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="stat-card shadow-sm">
+            <div class="stat-value">{{ stats.total_users }}</div>
+            <div class="stat-label">Total Users</div>
+            <div class="icon-container mt-3 position-relative">
+                <i class="fas fa-users fa-2x text-primary"></i>
+                
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="stat-card shadow-sm">
+            <div class="stat-value">{{ stats.total_lots }}</div>
+            <div class="stat-label">Parking Lots</div>
+            <div class="icon-container mt-3">
+                <i class="fas fa-parking fa-2x text-success"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="stat-card shadow-sm">
+            <div class="stat-value">{{ stats.total_spots|default(0) }}</div>
+            <div class="stat-label">Total Spots</div>
+            <div class="icon-container mt-3">
+                <i class="fas fa-car fa-2x text-info"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex align-items-baseline">
+                <div class="stat-value">{{ stats.occupied_spots|default(0) }}</div>
+                {% if stats.total_spots > 0 %}
+                <div class="ms-2 fw-bold" style="color: var(--accent-color)">
+                    {{ ((stats.occupied_spots|default(0) / stats.total_spots|default(1)) * 100)|round }}%
+                </div>
+                {% endif %}
+            </div>
+            <div class="stat-label">Occupied Spots</div>
+            <div class="icon-container mt-3">
+                <i class="fas fa-car-side fa-2x text-warning"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Spot Search -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-search me-2"></i>Search for a Parking Spot</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('admin_spot_search') }}">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-parking"></i></span>
+                        <input type="text" class="form-control" name="query" placeholder="Enter Spot Number (e.g., S12)" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="lot_id">
+                        <option value="">All Parking Lots</option>
+                        {% for lot in lots %}
+                            <option value="{{ lot.id }}">{{ lot.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" type="submit"><i class="fas fa-search me-2"></i>Search</button>
+                </div>
+            </div>
+            <div class="form-text mt-2">
+                <i class="fas fa-info-circle me-1 text-info"></i> Search for a specific parking spot across all lots or select a specific parking lot
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Parking Lots -->
+<div class="card shadow-sm">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Manage Parking Lots</h5>
+        <a href="{{ url_for('create_parking_lot') }}" class="btn btn-light btn-sm">
+            <i class="fas fa-plus-circle me-1"></i> Add New Lot
+        </a>
+    </div>
+    <div class="card-body">
+        {% if lots %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Address</th>
+                            <th>Price/Hour</th>
+                            <th>Capacity</th>
+                            <th>Occupancy</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lot in lots %}
+                        <tr>
+                            <td class="fw-bold text-primary">{{ lot.name }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                    <div>
+                                        <div>{{ lot.address }}</div>
+                                        <small class="text-muted">{{ lot.pincode }}</small>
+                                    </div>
+                                </div>
+                            </td>                            <td>
+                                <span class="badge bg-success p-2">
+                                    <i class="fas fa-rupee-sign me-1"></i>{{ "%.2f"|format(lot.price_per_hour) }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info p-2">
+                                    <i class="fas fa-parking me-1"></i>{{ lot.max_no_spots }} spots
+                                </span>
+                            </td>
+                            <td style="width: 25%">
+                                <div class="d-flex flex-column">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small class="text-danger">{{ lot.occupied_spots }} occupied</small>
+                                        <small class="text-success">{{ lot.available_spots }} available</small>
+                                    </div>                                    <div class="progress" style="height: 10px;">
+                                        {% set danger_width = (lot.occupied_spots / lot.max_no_spots) * 100 | round | int %}
+                                        {% set success_width = (lot.available_spots / lot.max_no_spots) * 100 | round | int %}
+                                        
+                                        <div class="progress-bar bg-danger w-{{ danger_width }}" role="progressbar" 
+                                             aria-valuenow="{{ lot.occupied_spots }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ lot.max_no_spots }}">
+                                        </div>
+                                        <div class="progress-bar bg-success w-{{ success_width }}" role="progressbar" 
+                                             aria-valuenow="{{ lot.available_spots }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ lot.max_no_spots }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('edit_parking_lot', lot_id=lot.id) }}" class="btn btn-sm btn-primary me-1" title="Edit Lot">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ url_for('delete_parking_lot', lot_id=lot.id) }}" method="POST" 
+                                          onsubmit="return confirm('Are you sure you want to delete this parking lot?');" 
+                                          style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete Lot" 
+                                                {% if lot.occupied_spots > 0 %}disabled{% endif %}
+                                                data-bs-toggle="tooltip" data-bs-placement="top" 
+                                                data-bs-title="{% if lot.occupied_spots > 0 %}Cannot delete a parking lot with occupied spots{% else %}Delete this parking lot{% endif %}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-info-circle fa-2x me-3"></i>
+                <div>
+                    <p class="mb-1 fw-bold">No parking lots have been created yet.</p>
+                    <p class="mb-0">Click "Add New Lot" to create your first parking lot.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Advanced Analytics with Charts -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Parking Analytics Dashboard</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Revenue by Parking Lot</h6>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                        <canvas id="revenueByLotChart" width="100%"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Bookings by Day of Week</h6>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                        <canvas id="bookingsByDayChart" width="100%"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Occupancy Trend (Last 7 Days)</h6>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                        <canvas id="occupancyTrendChart" width="100%"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div> <!-- Close admin-dashboard div -->
+
+<!-- Include Chart.js library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Parse chart data
+    const adminChartData = JSON.parse('{{ admin_chart_data|safe }}');
+    
+    // Set up colors
+    const chartColors = {
+        primary: 'rgba(54, 162, 235, 0.7)',
+        success: 'rgba(75, 192, 192, 0.7)',
+        danger: 'rgba(255, 99, 132, 0.7)',
+        warning: 'rgba(255, 159, 64, 0.7)',
+        purple: 'rgba(153, 102, 255, 0.7)',
+        yellow: 'rgba(255, 206, 86, 0.7)',
+        gray: 'rgba(231, 233, 237, 0.7)'
+    };
+      // Revenue by Parking Lot Chart
+    const revenueByLotCtx = document.getElementById('revenueByLotChart').getContext('2d');
+    new Chart(revenueByLotCtx, {
+        type: 'doughnut',
+        data: {
+            labels: adminChartData.lot_revenue.labels,
+            datasets: [{
+                data: adminChartData.lot_revenue.data,
+                backgroundColor: [
+                    chartColors.primary, 
+                    chartColors.success, 
+                    chartColors.danger,
+                    chartColors.warning,
+                    chartColors.purple,
+                    chartColors.yellow,
+                    chartColors.gray
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            layout: {
+                padding: 10
+            },
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        boxWidth: 10,
+                        font: {
+                            size: 10
+                        },
+                        padding: 6
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            return ` ₹${value.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+      // Bookings by Day of Week Chart
+    const bookingsByDayCtx = document.getElementById('bookingsByDayChart').getContext('2d');
+    new Chart(bookingsByDayCtx, {
+        type: 'bar',
+        data: {
+            labels: adminChartData.bookings_by_day.labels,
+            datasets: [{
+                label: 'Number of Bookings',
+                data: adminChartData.bookings_by_day.data,
+                backgroundColor: chartColors.primary,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                barPercentage: 0.6,
+                categoryPercentage: 0.7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            layout: {
+                padding: 5
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    displayColors: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 9
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        stepSize: 1,
+                        font: {
+                            size: 9
+                        }
+                    },
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(200, 200, 200, 0.3)'
+                    }
+                }
+            }
+        }
+    });
+      // Occupancy Trend Chart
+    const occupancyTrendCtx = document.getElementById('occupancyTrendChart').getContext('2d');
+    new Chart(occupancyTrendCtx, {
+        type: 'line',
+        data: {
+            labels: adminChartData.occupancy_trend.labels,
+            datasets: [{
+                label: 'Occupancy Rate (%)',
+                data: adminChartData.occupancy_trend.data,
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 2,
+                tension: 0.2,
+                fill: true,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            layout: {
+                padding: 5
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    displayColors: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 9
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 25,
+                        callback: function(value) {
+                            return value + '%';
+                        },
+                        font: {
+                            size: 9
+                        }
+                    },
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(200, 200, 200, 0.3)'
+                    }
+                }
+            }
+        }    });
+      // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    });
+</script>
+{% endblock %}

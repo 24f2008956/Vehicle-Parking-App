@@ -1,0 +1,8 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Werkzeug
+tabulate
+pytz
+Flask-WTF
+Flask-RESTful

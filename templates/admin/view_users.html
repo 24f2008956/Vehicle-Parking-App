@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}User Management - ParkSmart{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-users me-2"></i>Registered Users</h1>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</a>
+</div>
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>User List</h5>
+    </div>
+    <div class="card-body">
+        {% if users %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>
+                                <span class="d-flex align-items-center">
+                                    <i class="fas fa-user me-2 text-primary"></i>
+                                    {{ user.username }}
+                                </span>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No users have registered yet.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

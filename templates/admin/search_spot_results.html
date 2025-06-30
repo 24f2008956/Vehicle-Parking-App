@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Spot Search Results - ParkSmart{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-search me-2"></i>Search Results</h1>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Results for "{{ query }}"</h5>
+        
+        <form method="GET" action="{{ url_for('admin_spot_search') }}" class="d-flex gap-2">
+            <input type="hidden" name="query" value="{{ query }}">
+            <select class="form-select form-select-sm" name="lot_id" onchange="this.form.submit()">
+                <option value="">All Parking Lots</option>
+                {% for lot in lots %}
+                    <option value="{{ lot.id }}" {% if lot_id and lot_id|int == lot.id %}selected{% endif %}>{{ lot.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-light">Filter</button>
+        </form>
+    </div>
+    <div class="card-body">
+        {% if spots %}
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i>Found {{ spots|length }} parking spot(s) matching your search.
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Spot Number</th>
+                            <th>Parking Lot</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>                        {% for spot in spots %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-info p-2 fs-6">{{ spot.spot_number }}</span>
+                            </td>
+                            <td>{{ spot.lot.name }}</td>
+                            <td>
+                                {% if spot.status == 'O' %}
+                                    <span class="badge bg-danger p-2"><i class="fas fa-times-circle me-1"></i>Occupied</span>
+                                {% else %}
+                                    <span class="badge bg-success p-2"><i class="fas fa-check-circle me-1"></i>Available</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="showSpotDetails('{{ spot.id }}')">
+                                    <i class="fas fa-info-circle me-1"></i>View Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>No parking spots found matching "{{ query }}"{% if lot_id %} in the selected parking lot{% endif %}.
+            </div>
+        {% endif %}
+    </div>
+    <div class="card-footer">
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary"><i class="fas fa-arrow-left me-2"></i>Back to Dashboard</a>
+            <a href="{{ url_for('admin_spot_search') }}?query=S" class="btn btn-outline-info"><i class="fas fa-search me-2"></i>View All Spots</a>
+        </div>
+    </div>
+</div>
+
+<!-- Single Reusable Modal for Spot Details -->
+<div class="modal fade" id="spotDetailsModal" tabindex="-1" aria-labelledby="spotDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="spotDetailsModalLabel">
+                    <i class="fas fa-car me-2"></i><span id="modalSpotTitle"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="spotDetailsContent">
+                <!-- Content will be loaded dynamically -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading spot details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Bootstrap JS for Modal Support -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Make sure Bootstrap is properly loaded before using Modal
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if Bootstrap modal is available
+        if (typeof bootstrap === 'undefined') {
+            console.error('Bootstrap is not loaded properly');
+        }
+    });    // Store spot data for quick access
+    const spotData = {
+        {% for spot in spots %}
+            "{{ spot.id }}": {
+                "number": "{{ spot.spot_number }}",
+                "lot_name": "{{ spot.lot.name }}",
+                "lot_address": "{{ spot.lot.address }}",
+                "price_per_hour": "{{ spot.lot.price_per_hour }}",
+                "max_spots": "{{ spot.lot.max_no_spots }}",
+                "status": "{{ spot.status }}",
+                {% if spot.current_booking %}
+                "has_booking": true,
+                "user": "{{ spot.current_booking.user.username }}",
+                "vehicle": "{{ spot.current_booking.vehicle_number }}",
+                "in_time": "{{ spot.current_booking.in_time|ist_time }}"
+                {% else %}
+                "has_booking": false
+                {% endif %}
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };;    // Function to show spot details
+    function showSpotDetails(spotId) {
+        const modalElement = document.getElementById('spotDetailsModal');
+        const modal = new bootstrap.Modal(modalElement);
+        const spot = spotData[spotId];
+        if (!spot) {
+            alert("Error loading spot details");
+            return;
+        }
+        
+        // Set modal title
+        document.getElementById('modalSpotTitle').textContent = `Spot: ${spot.number} at ${spot.lot_name}`;
+        
+        // Build content HTML
+        let contentHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            <strong>Status:</strong>
+                        </div>`;
+                        
+        if (spot.status === 'O') {
+            contentHtml += `<span class="badge bg-danger p-2"><i class="fas fa-times-circle me-2"></i>Occupied</span>`;
+        } else {
+            contentHtml += `<span class="badge bg-success p-2"><i class="fas fa-check-circle me-2"></i>Available</span>`;
+        }
+        
+        contentHtml += `
+                    </div>
+                    
+                    <div class="card bg-light mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Parking Lot Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <i class="fas fa-map-marker-alt me-2 text-danger"></i><strong>Address:</strong> ${spot.lot_address}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-rupee-sign me-2 text-success"></i><strong>Price/Hour:</strong> ₹${spot.price_per_hour}
+                            </p>
+                            <p class="mb-0">
+                                <i class="fas fa-car me-2 text-info"></i><strong>Total Spots:</strong> ${spot.max_spots}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">`;
+        
+        if (spot.has_booking) {
+            contentHtml += `
+                <div class="mt-3">
+                    <h6><i class="fas fa-info-circle me-2"></i>Current Booking Details</h6>
+                    <div class="card bg-light mt-2">
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <i class="fas fa-user me-2 text-primary"></i><strong>User:</strong> ${spot.user}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-car me-2 text-primary"></i><strong>Vehicle:</strong> ${spot.vehicle}
+                            </p>
+                            <p class="mb-0">
+                                <i class="fas fa-clock me-2 text-primary"></i><strong>Parked At:</strong> ${spot.in_time}
+                            </p>
+                        </div>
+                    </div>
+                </div>`;
+        } else {
+            contentHtml += `
+                <div class="d-flex flex-column justify-content-center align-items-center h-100">
+                    <div class="spot-visualization mb-4">
+                        <i class="fas fa-parking text-success fa-5x"></i>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-muted">
+                            This parking spot is available for booking
+                        </p>
+                    </div>
+                </div>`;
+        }
+        
+        contentHtml += `
+                </div>
+            </div>`;
+        
+        // Set the content and show modal
+        document.getElementById('spotDetailsContent').innerHTML = contentHtml;
+        modal.show();
+    }
+</script>
+{% endblock %}

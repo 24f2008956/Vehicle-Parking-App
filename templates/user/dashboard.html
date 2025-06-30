@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %}User Dashboard - ParkSmart{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-tachometer-alt me-2"></i>Welcome, {{ current_user.username }}</h1>
+    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary"><i class="fas fa-home me-2"></i>Home</a>
+</div>
+
+{% if active_booking %}
+<div class="card border-primary mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-car me-2"></i>Active Booking</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <h4 class="card-title">You are parked at {{ active_booking.parking_lot.name }}</h4>
+                <div class="mb-3">                    <p class="mb-1"><i class="fas fa-map-marker-alt me-2"></i><strong>Location:</strong> {{ active_booking.parking_lot.address }}</p>
+                    <p class="mb-1"><i class="fas fa-parking me-2"></i><strong>Spot:</strong> {{ active_booking.parking_spot.spot_number }}</p>
+                    <p class="mb-1"><i class="fas fa-car-side me-2"></i><strong>Vehicle:</strong> {{ active_booking.vehicle_number }}</p>
+                    <p class="mb-1"><i class="fas fa-clock me-2"></i><strong>Parked At:</strong> <span id="formatted-in-time">{{ active_booking.in_time|ist_time }}</span></p>
+                    <p class="mb-1"><i class="fas fa-hourglass-half me-2"></i><strong>Duration:</strong> <span id="parking-duration">Calculating...</span></p>
+                    <p class="mb-1"><i class="fas fa-rupee-sign me-2"></i><strong>Current Cost:</strong> <span id="current-cost">Calculating...</span></p>
+                </div>
+            </div>
+            <div class="col-md-4 text-center d-flex align-items-center justify-content-center">
+                <form action="{{ url_for('release_spot', booking_id=active_booking.id) }}" method="POST">
+                    <button type="submit" class="btn btn-warning btn-lg"><i class="fas fa-sign-out-alt me-2"></i>Release Spot & Pay</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card border-success mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="fas fa-parking me-2"></i>Reserve a Spot</h5>
+    </div>
+    <div class="card-body">
+        <h4 class="card-title mb-4">Available Parking Lots</h4>
+        
+        {% if lots|selectattr('available_spots', '>', 0)|list|length > 0 %}
+            <div class="row">
+                {% for lot in lots %}
+                    {% if lot.available_spots > 0 %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ lot.name }}</h5>
+                                <p class="text-muted"><i class="fas fa-map-marker-alt me-2"></i>{{ lot.address }}</p>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="badge bg-success rounded-pill">{{ lot.available_spots }} spots available</span>
+                                    <a href="{{ url_for('reserve_spot', lot_id=lot.id) }}" class="btn btn-primary"><i class="fas fa-parking me-2"></i>Reserve</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No parking spots are currently available. Please check back later.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Parking Analytics Section -->
+{% if history %}
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Your Parking Analytics</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">Spending by Parking Lot</h6>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                        <canvas id="lotSpendingChart" width="100%"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">Parking Duration by Day</h6>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                        <canvas id="parkingByDayChart" width="100%"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h6 class="mb-0">Bookings by Month</h6>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center" style="height: 180px; overflow: hidden;">
+                        <canvas id="monthlyBookingsChart" width="100%"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Booking History</h5>
+    </div>
+    <div class="card-body">
+        {% if history %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Lot</th>
+                            <th>Vehicle</th>
+                            <th>Spot</th>
+                            <th>In Time</th>
+                            <th>Out Time</th>
+                            <th>Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in history %}
+                        <tr>                            <td>{{ item.parking_lot.name }}</td>
+                            <td>{{ item.vehicle_number }}</td>
+                            <td><span class="badge bg-secondary">{{ item.parking_spot.spot_number }}</span></td>
+                            <td>{{ item.in_time|ist_time }}</td>
+                            <td>{{ item.out_time|ist_time }}</td>
+                            <td><span class="badge bg-success">{{ item.cost|format_currency }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>You don't have any parking history yet.
+            </div>
+        {% endif %}    </div>
+</div>
+
+{% if active_booking %}
+<script>
+    // Real-time duration and cost calculation
+    // Convert the server datetime string to a JS Date object
+    const parkingStartTimeStr = '{{ active_booking.in_time.strftime("%Y-%m-%dT%H:%M:%S") }}';
+    
+    // Parse the time string as IST (Indian Standard Time)
+    // Create a date object using the UTC time that corresponds to the IST time from server
+    const parkingStartTime = new Date(parkingStartTimeStr);
+    const pricePerHour = parseFloat('{{ active_booking.parking_lot.price_per_hour }}');
+    
+    // We'll leave the server-rendered time display and just use JS for the calculations
+      
+    function updateParkingInfo() {
+        // Get current time
+        const now = new Date();
+        
+        // Calculate the duration since parking started
+        const durationMs = now - parkingStartTime;
+        const durationHours = durationMs / (1000 * 60 * 60);
+        
+        // Prevent negative duration (should not happen with fixed time handling)
+        if (durationMs < 0) {
+            document.getElementById('parking-duration').textContent = '0h 0m 0s';
+            document.getElementById('current-cost').textContent = '₹0.00';
+            return;
+        }
+        
+        // Format duration
+        const hours = Math.floor(durationHours);
+        const minutes = Math.floor((durationHours - hours) * 60);
+        const seconds = Math.floor(((durationHours - hours) * 60 - minutes) * 60);
+        
+        const durationText = `${hours}h ${minutes}m ${seconds}s`;
+        const currentCost = (durationHours * pricePerHour).toFixed(2);
+        
+        document.getElementById('parking-duration').textContent = durationText;
+        document.getElementById('current-cost').textContent = `₹${currentCost}`;
+    }
+    
+    // Update immediately and then every second
+    updateParkingInfo();
+    setInterval(updateParkingInfo, 1000);
+</script>
+{% endif %}
+
+{% if history %}
+<!-- Include Chart.js library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Parse the chart data from the server
+    const chartData = JSON.parse('{{ chart_data|safe }}');
+    
+    // Set up colors
+    const colors = [
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(255, 159, 64, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 206, 86, 0.7)',
+        'rgba(231, 233, 237, 0.7)'
+    ];
+      // Spending by Parking Lot Chart
+    const lotSpendingCtx = document.getElementById('lotSpendingChart').getContext('2d');
+    new Chart(lotSpendingCtx, {
+        type: 'pie',
+        data: {
+            labels: chartData.lot_spending.labels,
+            datasets: [{
+                data: chartData.lot_spending.data,
+                backgroundColor: colors,
+                borderColor: colors.map(color => color.replace('0.7', '1')),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            layout: {
+                padding: 10
+            },
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        boxWidth: 10,
+                        font: {
+                            size: 10
+                        },
+                        padding: 6
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            return ` ₹${value.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+      // Parking Duration by Day Chart
+    const parkingByDayCtx = document.getElementById('parkingByDayChart').getContext('2d');
+    new Chart(parkingByDayCtx, {
+        type: 'bar',
+        data: {
+            labels: chartData.parking_by_day.labels,
+            datasets: [{
+                label: 'Hours Parked',
+                data: chartData.parking_by_day.data,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                barPercentage: 0.6,
+                categoryPercentage: 0.7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            layout: {
+                padding: 5
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.raw.toFixed(1) + ' hours';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 9
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: {
+                            size: 9
+                        },
+                        callback: function(value) {
+                            return value + 'h';
+                        }
+                    },
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(200, 200, 200, 0.3)'
+                    }
+                }
+            }
+        }
+    });
+      // Monthly Bookings Chart
+    const monthlyBookingsCtx = document.getElementById('monthlyBookingsChart').getContext('2d');
+    new Chart(monthlyBookingsCtx, {
+        type: 'line',
+        data: {
+            labels: chartData.monthly_bookings.labels,
+            datasets: [{
+                label: 'Number of Bookings',
+                data: chartData.monthly_bookings.data,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.2,
+                fill: true,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            layout: {
+                padding: 5
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    displayColors: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 9
+                        }
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0,
+                        font: {
+                            size: 9
+                        }
+                    },
+                    grid: {
+                        display: true,
+                        drawBorder: false,
+                        color: 'rgba(200, 200, 200, 0.3)'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

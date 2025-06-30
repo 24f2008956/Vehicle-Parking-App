@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}ParkSmart - Vehicle Parking App{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Smart Parking App</h1>
+        <p class="hero-subtitle">The easiest way to find and reserve a parking spot.</p>
+        <div class="d-flex gap-3">
+            <a href="{{ url_for('login') }}" class="btn btn-light btn-lg"><i class="fas fa-sign-in-alt me-2"></i>Login</a>
+            <a href="{{ url_for('register') }}" class="btn btn-outline-light btn-lg"><i class="fas fa-user-plus me-2"></i>Register</a>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-car fa-3x text-primary"></i>
+                </div>
+                <h3 class="card-title">Find Parking</h3>
+                <p class="card-text">Quickly locate available parking spots across multiple lots in your area.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-ticket-alt fa-3x text-success"></i>
+                </div>
+                <h3 class="card-title">Easy Booking</h3>
+                <p class="card-text">Reserve your spot in advance with just a few clicks. No paperwork, no hassle.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-history fa-3x text-info"></i>
+                </div>
+                <h3 class="card-title">Track History</h3>
+                <p class="card-text">View your parking history and receipts anytime in your personal dashboard.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <p class="lead">Don't have an account? Register Here!</p>
+    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg px-4"><i class="fas fa-user-plus me-2"></i>Create Account</a>
+</div>
+{% endblock %}
